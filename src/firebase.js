@@ -11,13 +11,11 @@ const env = import.meta.env;
 const firebaseConfig = {
   apiKey:
     env.VITE_FIREBASE_API_KEY || "AIzaSyCc5FnZ_uqH_Ru5MamPQnvZ_eTzXqxAOCw",
-  authDomain:
-    env.VITE_FIREBASE_AUTH_DOMAIN || "chat-app-396ce.firebaseapp.com",
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "chat-app-396ce.firebaseapp.com",
   projectId: env.VITE_FIREBASE_PROJECT_ID || "chat-app-396ce",
   storageBucket:
     env.VITE_FIREBASE_STORAGE_BUCKET || "chat-app-396ce.firebasestorage.app",
-  messagingSenderId:
-    env.VITE_FIREBASE_MESSAGING_SENDER_ID || "545532201949",
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "545532201949",
   appId:
     env.VITE_FIREBASE_APP_ID || "1:545532201949:web:ce021ffa71da6529e20434",
 };
