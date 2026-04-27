@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isChatMember(chatId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.memberUids;
+    }
+
+    function isChatOwner(chatId) {
+      return signedIn()
+        && request.auth.uid == get(/databases/$(database)/documents/chats/$(chatId)).data.createdBy;
+    }
+
+    // User profiles (minimal)
+    match /users/{uid} {
+      allow read: if signedIn(); // tighten if needed
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    match /chats/{chatId} {
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.auth.uid in request.resource.data.memberUids;
+
+      // Only members can read chat metadata
+      allow read: if signedIn() && request.auth.uid in resource.data.memberUids;
+
+      // Members can update chat metadata and (append-only) membership.
+      // Owner can also remove members (but cannot remove themselves).
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.memberUids
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.memberUids.hasAll([resource.data.createdBy])
+        && (
+          // member append-only for non-owners
+          (request.auth.uid != resource.data.createdBy
+            && resource.data.memberUids.size() <= request.resource.data.memberUids.size()
+            && request.resource.data.memberUids.hasAll(resource.data.memberUids))
+          ||
+          // owner can add/remove members
+          (request.auth.uid == resource.data.createdBy)
+        );
+
+      // Only the creator can delete the chat
+      allow delete: if isChatOwner(chatId);
+
+      match /messages/{messageId} {
+        allow read: if isChatMember(chatId);
+        allow create: if isChatMember(chatId)
+          && request.resource.data.uid == request.auth.uid;
+        // Allow reaction updates by members, while keeping message content immutable.
+        allow update: if isChatMember(chatId)
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.text == resource.data.text
+          && request.resource.data.displayName == resource.data.displayName
+          && request.resource.data.photoURL == resource.data.photoURL
+          && request.resource.data.createdAt == resource.data.createdAt;
+
+        // Owner may delete messages (used by "delete chat" cleanup).
+        allow delete: if isChatOwner(chatId);
+      }
+    }
+  }
+}
+
